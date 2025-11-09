@@ -36,7 +36,8 @@ Transform your coding experience into a retro arcade adventure! HyperType adds s
 2. Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
 3. Search for "HyperType"
 4. Click Install
-5. Start typing to see the magic! ✨
+5. **If effects don't appear immediately**: Open Command Palette (Ctrl+Shift+P / Cmd+Shift+P) and run `Start Hypertype`
+6. Start typing to see the magic! ✨
 
 ## 🎯 Usage
 
