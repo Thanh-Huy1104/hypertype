@@ -4,7 +4,7 @@
   "displayName": "HyperType",
   "description": "Pixel-art typing effects with Balatro-style animations. Watch your keystrokes come alive with floating text, color gradients, and retro visual feedback.",
   "version": "0.0.1",
-  "publisher": "Thanh-huy1104",
+  "publisher": "Thanh-huyio",
   "author": {
     "name": "Thanh-Huy"
   },
@@ -33,7 +33,7 @@
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other",
