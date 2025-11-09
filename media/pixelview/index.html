@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperType</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1e1e1e;
+        }
+        #root {
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <canvas id="pixel-canvas"></canvas>
+    </div>
+    <script>
+        const vscode = acquireVsCodeApi();
+        vscode.postMessage({ command: 'ready' });
+        const canvas = document.getElementById('pixel-canvas');
+        const ctx = canvas.getContext('2d');
+        const root = document.getElementById('root');
+
+        window.addEventListener('message', event => {
+            const message = event.data;
+            if (message.command === 'update') {
+                draw(message.buffer);
+            } else if (message.type === 'shake') {
+                const intensity = message.intensity || 1.0;
+                shake(120, intensity);
+            }
+        });
+
+        function shake(ms = 120, intensity = 1.0) {
+            const t = setInterval(() => {
+                const offsetX = (Math.random() - 0.5) * 4 * intensity;
+                const offsetY = (Math.random() - 0.5) * 4 * intensity;
+                root.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            }, 16);
+            setTimeout(() => {
+                clearInterval(t);
+                root.style.transform = "";
+            }, ms);
+        }
+
+        function draw(buffer) {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * dpr;
+            canvas.height = canvas.offsetHeight * dpr;
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, 'red');
+            gradient.addColorStop(0.5, 'blue');
+            gradient.addColorStop(1, 'green');
+
+            ctx.fillStyle = gradient;
+            ctx.font = `${16 * dpr}px 'Press Start 2P'`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            const text = buffer.join('');
+            ctx.fillText(text, 10 * dpr, 10 * dpr);
+        }
+    </script>
+</body>
+</html>
