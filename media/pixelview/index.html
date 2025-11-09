@@ -30,12 +30,103 @@
     <div id="root">
         <canvas id="pixel-canvas"></canvas>
     </div>
+    <!-- Debug button for testing audio -->
+    <button id="testSound" style="position: absolute; top: 5px; left: 5px; z-index: 1000; padding: 5px; font-size: 10px;">Test Sound</button>
     <script>
         const vscode = acquireVsCodeApi();
         vscode.postMessage({ command: 'ready' });
         const canvas = document.getElementById('pixel-canvas');
         const ctx = canvas.getContext('2d');
         const root = document.getElementById('root');
+
+        // Web Audio API for true pitch shifting
+        let soundEnabled = true;
+        let audioContext;
+        let typeBuffer, backspaceBuffer, enterBuffer;
+        let audioInitialized = false;
+
+        // Initialize Web Audio context
+        function initAudio() {
+            if (!audioInitialized) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioInitialized = true;
+                console.log('Web Audio context created');
+            }
+        }
+
+        // Load audio file as buffer
+        async function loadAudioBuffer(url) {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            return await audioContext.decodeAudioData(arrayBuffer);
+        }
+
+        // Set the audio sources and load buffers
+        async function setAudioSource(typeUri, backspaceUri, enterUri) {
+            console.log('Setting audio sources:', { typeUri, backspaceUri, enterUri });
+            initAudio();
+            
+            try {
+                // Load all three sound files
+                typeBuffer = await loadAudioBuffer(typeUri);
+                console.log('Type audio loaded');
+                
+                backspaceBuffer = await loadAudioBuffer(backspaceUri);
+                console.log('Backspace audio loaded');
+                
+                enterBuffer = await loadAudioBuffer(enterUri);
+                console.log('Enter audio loaded');
+                
+                console.log('All audio buffers loaded');
+            } catch (error) {
+                console.error('Error loading audio:', error);
+            }
+        }
+
+        // Play sound with pitch shifting (detune in cents: 100 cents = 1 semitone)
+        function playTypeSound(soundType = 'normal', pitch = 1.0) {
+            if (!soundEnabled || !audioContext) {
+                console.log('Sound disabled or audio context not ready');
+                return;
+            }
+            
+            // Select the appropriate audio buffer
+            let buffer;
+            if (soundType === 'backspace') {
+                buffer = backspaceBuffer;
+            } else if (soundType === 'enter') {
+                buffer = enterBuffer;
+            } else {
+                buffer = typeBuffer;
+            }
+            
+            if (!buffer) {
+                console.log('Audio buffer not loaded for', soundType);
+                return;
+            }
+            
+            console.log('Playing', soundType, 'sound with pitch:', pitch);
+            
+            // Create source and nodes
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            
+            // Convert pitch multiplier to detune value in cents
+            // pitch 1.0 = 0 cents, pitch 2.0 = 1200 cents (one octave up)
+            const detune = 1200 * Math.log2(pitch);
+            source.detune.value = detune;
+            
+            // Create gain node for volume
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.5;
+            
+            // Connect: source -> gain -> destination
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Play
+            source.start(0);
+        }
 
         window.addEventListener('message', event => {
             const message = event.data;
@@ -44,7 +135,20 @@
             } else if (message.type === 'shake') {
                 const intensity = message.intensity || 1.0;
                 shake(120, intensity);
+            } else if (message.type === 'playSound') {
+                const pitch = message.pitch || 1.0;
+                playTypeSound(message.soundType, pitch);
+            } else if (message.type === 'toggleSound') {
+                soundEnabled = message.enabled;
+            } else if (message.type === 'setAudioSource') {
+                setAudioSource(message.typeAudioUri, message.backspaceAudioUri, message.enterAudioUri);
             }
+        });
+
+        // Test button for debugging
+        document.getElementById('testSound').addEventListener('click', () => {
+            console.log('Test button clicked');
+            playTypeSound();
         });
 
         function shake(ms = 120, intensity = 1.0) {

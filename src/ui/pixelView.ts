@@ -42,9 +42,43 @@ export class PixelViewProvider implements vscode.WebviewViewProvider {
       if (message.command === "ready") {
         console.log('PixelView: ready event received');
         this._isReady = true;
+        
+        // Send audio source URI to webview
+        this._sendAudioSource(webviewView);
+        
         this._onReady.emit("ready");
         this._processMessageQueue();
       }
+    });
+  }
+
+  private _sendAudioSource(webviewView: vscode.WebviewView) {
+    // Send URIs for all sound files
+    const typeAudioPath = vscode.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "multhit1.mp3")
+    );
+    const backspaceAudioPath = vscode.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "slice1.mp3")
+    );
+    const enterAudioPath = vscode.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "gold_seal.mp3")
+    );
+    
+    const typeAudioUri = webviewView.webview.asWebviewUri(typeAudioPath).toString();
+    const backspaceAudioUri = webviewView.webview.asWebviewUri(backspaceAudioPath).toString();
+    const enterAudioUri = webviewView.webview.asWebviewUri(enterAudioPath).toString();
+    
+    console.log('PixelView: Sending audio URIs:', {
+      type: typeAudioUri,
+      backspace: backspaceAudioUri,
+      enter: enterAudioUri
+    });
+    
+    this.postMessage({ 
+      type: 'setAudioSource', 
+      typeAudioUri,
+      backspaceAudioUri,
+      enterAudioUri
     });
   }
 

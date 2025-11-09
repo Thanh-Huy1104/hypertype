@@ -316,11 +316,21 @@ function pulseChar(editor, range) {
 
 // src/effects/typing.ts
 var recentBuffer = [];
+var pitchLevel = 0;
+var pitchResetTimer = null;
 async function onType(context, text, provider) {
   const editor = vscode3.window.activeTextEditor;
   if (!editor) {
     return;
   }
+  pitchLevel++;
+  if (pitchResetTimer) {
+    clearTimeout(pitchResetTimer);
+  }
+  pitchResetTimer = setTimeout(() => {
+    pitchLevel = 0;
+  }, 300);
+  const pitch = Math.min(1.3, Math.max(0.95, 1 + pitchLevel * 0.01));
   await vscode3.commands.executeCommand("default:type", { text });
   const cursor = editor.selection.active;
   let charRange;
@@ -370,6 +380,8 @@ async function onType(context, text, provider) {
       }, 25);
     }, 150);
     provider.postMessage({ type: "shake", intensity: 0.3 });
+    const soundType = token === "ENTER" ? "enter" : "normal";
+    provider.postMessage({ type: "playSound", soundType, pitch });
     if (token !== "ENTER" && token !== "TAB" && token !== "BACKSPACE") {
       let expansion = 0;
       const cornerDecorations = [];
@@ -379,17 +391,17 @@ async function onType(context, text, provider) {
         if (cornerDecorations.length > 0) {
           cornerDecorations.shift()?.dispose();
         }
-        expansion += 0.8;
+        expansion += 3;
         const cornerDeco = cornerBoxDecoration(cornerColor, expansion);
         cornerDecorations.push(cornerDeco);
         editor.setDecorations(cornerDeco, [{ range: charRange }]);
-        if (expansion >= 6) {
+        if (expansion >= 30) {
           clearInterval(cornerInterval);
           setTimeout(() => {
             cornerDecorations.forEach((d) => d.dispose());
           }, 50);
         }
-      }, 25);
+      }, 16);
     }
   }
   pulseChar(editor, charRange);
@@ -419,6 +431,14 @@ function startTypingEffect(context, provider) {
     if (!editor) {
       return;
     }
+    pitchLevel++;
+    if (pitchResetTimer) {
+      clearTimeout(pitchResetTimer);
+    }
+    pitchResetTimer = setTimeout(() => {
+      pitchLevel = 0;
+    }, 300);
+    const pitch = Math.min(1.3, Math.max(0.95, 1 + pitchLevel * 0.01));
     await vscode3.commands.executeCommand("default:type", { text: "	" });
     const cursor = editor.selection.active;
     const tabStart = new vscode3.Position(cursor.line, Math.max(0, cursor.character - 1));
@@ -449,6 +469,7 @@ function startTypingEffect(context, provider) {
       }, 25);
     }, 150);
     provider.postMessage({ type: "shake", intensity: 0.3 });
+    provider.postMessage({ type: "playSound", soundType: "normal", pitch });
     recentBuffer.push("	");
     if (recentBuffer.length > 50) {
       recentBuffer.shift();
@@ -548,17 +569,17 @@ function startTypingEffect(context, provider) {
         if (cornerDecorations.length > 0) {
           cornerDecorations.shift()?.dispose();
         }
-        expansion += 0.8;
+        expansion += 3;
         const cornerDeco = cornerBoxDecoration(cornerColor, expansion);
         cornerDecorations.push(cornerDeco);
         editor.setDecorations(cornerDeco, [{ range: charRange }]);
-        if (expansion >= 6) {
+        if (expansion >= 30) {
           clearInterval(cornerInterval);
           setTimeout(() => {
             cornerDecorations.forEach((d) => d.dispose());
           }, 50);
         }
-      }, 25);
+      }, 16);
     }
     await editor.edit((editBuilder) => {
       if (!editor.selection.isEmpty) {
@@ -621,9 +642,35 @@ var PixelViewProvider = class {
       if (message.command === "ready") {
         console.log("PixelView: ready event received");
         this._isReady = true;
+        this._sendAudioSource(webviewView);
         this._onReady.emit("ready");
         this._processMessageQueue();
       }
+    });
+  }
+  _sendAudioSource(webviewView) {
+    const typeAudioPath = vscode4.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "multhit1.mp3")
+    );
+    const backspaceAudioPath = vscode4.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "slice1.mp3")
+    );
+    const enterAudioPath = vscode4.Uri.file(
+      path.join(this._extensionPath, "media", "sounds", "gold_seal.mp3")
+    );
+    const typeAudioUri = webviewView.webview.asWebviewUri(typeAudioPath).toString();
+    const backspaceAudioUri = webviewView.webview.asWebviewUri(backspaceAudioPath).toString();
+    const enterAudioUri = webviewView.webview.asWebviewUri(enterAudioPath).toString();
+    console.log("PixelView: Sending audio URIs:", {
+      type: typeAudioUri,
+      backspace: backspaceAudioUri,
+      enter: enterAudioUri
+    });
+    this.postMessage({
+      type: "setAudioSource",
+      typeAudioUri,
+      backspaceAudioUri,
+      enterAudioUri
     });
   }
   update(buffer) {
@@ -684,8 +731,22 @@ function activate(context) {
   console.log("WebviewViewProvider registered for:", PixelViewProvider.viewType);
   provider.onReady.once("ready", () => {
     console.log("PixelView is ready, starting typing effect");
+    const config = vscode5.workspace.getConfiguration("hypertype");
+    const soundEnabled = config.get("enableSound", true);
+    provider.postMessage({ type: "toggleSound", enabled: soundEnabled });
     startTypingEffect(context, provider);
   });
+  context.subscriptions.push(
+    vscode5.commands.registerCommand("hypertype.toggleSound", async () => {
+      const config = vscode5.workspace.getConfiguration("hypertype");
+      const currentSetting = config.get("enableSound", true);
+      await config.update("enableSound", !currentSetting, vscode5.ConfigurationTarget.Global);
+      provider.postMessage({ type: "toggleSound", enabled: !currentSetting });
+      vscode5.window.showInformationMessage(
+        `HyperType sound effects ${!currentSetting ? "enabled" : "disabled"}`
+      );
+    })
+  );
   context.subscriptions.push(
     vscode5.commands.registerCommand("hypertype.start", async () => {
       console.log("hypertype.start command called");

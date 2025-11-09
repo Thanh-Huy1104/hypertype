@@ -4,12 +4,29 @@ import { pixelTextDecoration, enterGutterDecoration, cornerBoxDecoration, create
 import { pulseChar } from './pulse';
 
 const recentBuffer: string[] = [];
+let pitchLevel = 0; // Increments with each keystroke
+let pitchResetTimer: NodeJS.Timeout | null = null;
 
 async function onType(context: vscode.ExtensionContext, text: string, provider: PixelViewProvider) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         return;
     }
+
+    // Increment pitch level with each keystroke
+    pitchLevel++;
+    
+    // Reset pitch level after 300ms of no typing
+    if (pitchResetTimer) {
+        clearTimeout(pitchResetTimer);
+    }
+    pitchResetTimer = setTimeout(() => {
+        pitchLevel = 0;
+    }, 300);
+    
+    // Calculate pitch based on consecutive keystrokes (0.95 to 1.3)
+    // Each keystroke increases pitch by a small amount (0.01)
+    const pitch = Math.min(1.3, Math.max(0.95, 1.0 + (pitchLevel * 0.01)));
 
     // First, let the default type command handle the actual text insertion
     await vscode.commands.executeCommand('default:type', { text });
@@ -92,6 +109,11 @@ async function onType(context: vscode.ExtensionContext, text: string, provider: 
         // Small shake for each character
         provider.postMessage({ type: 'shake', intensity: 0.3 });
         
+        // Play typing sound with pitch based on typing speed
+        // Use 'enter' sound for ENTER key, 'normal' for everything else
+        const soundType = token === 'ENTER' ? 'enter' : 'normal';
+        provider.postMessage({ type: 'playSound', soundType, pitch });
+        
         // Corner box expansion effect on the character itself (not for ENTER, TAB, or BACKSPACE)
         if (token !== 'ENTER' && token !== 'TAB' && token !== 'BACKSPACE') {
             let expansion = 0;
@@ -105,18 +127,18 @@ async function onType(context: vscode.ExtensionContext, text: string, provider: 
                     cornerDecorations.shift()?.dispose();
                 }
                 
-                expansion += 0.8; // Much slower expansion
+                expansion += 3; // Much faster expansion
                 const cornerDeco = cornerBoxDecoration(cornerColor, expansion);
                 cornerDecorations.push(cornerDeco);
                 editor.setDecorations(cornerDeco, [{ range: charRange }]);
                 
-                if (expansion >= 6) { // Much less total expansion
+                if (expansion >= 30) { // Much bigger total expansion
                     clearInterval(cornerInterval);
                     setTimeout(() => {
                         cornerDecorations.forEach(d => d.dispose());
                     }, 50);
                 }
-            }, 25);
+            }, 16); // Faster interval (60fps)
         }
     }
 
@@ -155,6 +177,18 @@ export function startTypingEffect(context: vscode.ExtensionContext, provider: Pi
         if (!editor) {
             return;
         }
+        
+        // Increment pitch level
+        pitchLevel++;
+        
+        if (pitchResetTimer) {
+            clearTimeout(pitchResetTimer);
+        }
+        pitchResetTimer = setTimeout(() => {
+            pitchLevel = 0;
+        }, 300);
+        
+        const pitch = Math.min(1.3, Math.max(0.95, 1.0 + (pitchLevel * 0.01)));
         
         // Execute default tab behavior first
         await vscode.commands.executeCommand('default:type', { text: '\t' });
@@ -202,6 +236,9 @@ export function startTypingEffect(context: vscode.ExtensionContext, provider: Pi
         
         // Small shake
         provider.postMessage({ type: 'shake', intensity: 0.3 });
+        
+        // Play typing sound with pitch
+        provider.postMessage({ type: 'playSound', soundType: 'normal', pitch });
         
         recentBuffer.push('\t');
         if (recentBuffer.length > 50) {
@@ -289,6 +326,8 @@ export function startTypingEffect(context: vscode.ExtensionContext, provider: Pi
         
         // Small shake for backspace
         provider.postMessage({ type: 'shake', intensity: 0.5 });
+        
+        // No sound for backspace
     });
 
     const deleteRightDisposable = vscode.commands.registerCommand('deleteRight', async () => {
@@ -350,18 +389,18 @@ export function startTypingEffect(context: vscode.ExtensionContext, provider: Pi
                     cornerDecorations.shift()?.dispose();
                 }
                 
-                expansion += 0.8;
+                expansion += 3; // Much faster expansion
                 const cornerDeco = cornerBoxDecoration(cornerColor, expansion);
                 cornerDecorations.push(cornerDeco);
                 editor.setDecorations(cornerDeco, [{ range: charRange }]);
                 
-                if (expansion >= 6) {
+                if (expansion >= 30) { // Much bigger total expansion
                     clearInterval(cornerInterval);
                     setTimeout(() => {
                         cornerDecorations.forEach(d => d.dispose());
                     }, 50);
                 }
-            }, 25);
+            }, 16); // Faster interval (60fps)
         }
         
         // Delete the character manually
@@ -394,6 +433,8 @@ export function startTypingEffect(context: vscode.ExtensionContext, provider: Pi
         
         // Small shake for delete
         provider.postMessage({ type: 'shake', intensity: 0.5 });
+        
+        // No sound for delete
     });
 
     context.subscriptions.push(typeDisposable, tabDisposable, deleteLeftDisposable, deleteRightDisposable);

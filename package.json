@@ -4,19 +4,19 @@
   "displayName": "HyperType",
   "description": "Pixel-art typing effects with Balatro-style animations. Watch your keystrokes come alive with floating text, color gradients, and retro visual feedback.",
   "version": "0.0.1",
-  "publisher": "your-publisher-name",
+  "publisher": "Thanh-huy1104",
   "author": {
-    "name": "Your Name"
+    "name": "Thanh-Huy"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/hypertype"
+    "url": "https://github.com/Thanh-huy1104/hypertype"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/hypertype/issues"
+    "url": "https://github.com/Thanh-huy1104/hypertype/issues"
   },
-  "homepage": "https://github.com/yourusername/hypertype#readme",
+  "homepage": "https://github.com/Thanh-huy1104/hypertype#readme",
   "keywords": [
     "typing",
     "effects",
@@ -42,6 +42,16 @@
   "activationEvents": [],
     "main": "./dist/extension.js",
     "contributes": {
+        "configuration": {
+            "title": "HyperType",
+            "properties": {
+                "hypertype.enableSound": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable typing sound effects"
+                }
+            }
+        },
         "views": {
             "explorer": [
                   {
@@ -56,6 +66,10 @@
             {
                 "command": "hypertype.start",
                 "title": "Start Hypertype"
+            },
+            {
+                "command": "hypertype.toggleSound",
+                "title": "HyperType: Toggle Sound Effects"
             }
         ]
     },

@@ -21,8 +21,27 @@ export function activate(context: vscode.ExtensionContext) {
     // Listen for ready event immediately after provider is created
     provider.onReady.once('ready', () => {
         console.log('PixelView is ready, starting typing effect');
+        
+        // Initialize sound setting
+        const config = vscode.workspace.getConfiguration('hypertype');
+        const soundEnabled = config.get<boolean>('enableSound', true);
+        provider.postMessage({ type: 'toggleSound', enabled: soundEnabled });
+        
         startTypingEffect(context, provider);
     });
+
+    // Command to toggle sound effects
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hypertype.toggleSound', async () => {
+            const config = vscode.workspace.getConfiguration('hypertype');
+            const currentSetting = config.get<boolean>('enableSound', true);
+            await config.update('enableSound', !currentSetting, vscode.ConfigurationTarget.Global);
+            provider.postMessage({ type: 'toggleSound', enabled: !currentSetting });
+            vscode.window.showInformationMessage(
+                `HyperType sound effects ${!currentSetting ? 'enabled' : 'disabled'}`
+            );
+        })
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('hypertype.start', async () => {
