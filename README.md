@@ -2,6 +2,8 @@
 
 Transform your coding experience into a retro arcade adventure! HyperType adds satisfying pixel-art effects, dynamic sound feedback, and mesmerizing visual animations to every keystroke. Inspired by the addictive visual style of Balatro, HyperType makes typing code feel like playing a game.
 
+![HyperType Demo](https://raw.githubusercontent.com/Thanh-Huy1104/hypertype/main/demo.mp4)
+
 ## ✨ Features
 
 ### � Visual Effects
